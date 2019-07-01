@@ -10,8 +10,11 @@
 #define LED_COLOR_R 1
 #define LED_COLOR_B 2
 
+#define VALID       0xFE
+
 typedef struct ws2812_string
 	{
+	uint8_t           valid_flag;
 	pin_t             pin;
 	uint8_t           count;
 	uint8_t           led[LED_MAX][LED_COLORS];

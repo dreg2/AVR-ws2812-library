@@ -38,7 +38,7 @@ ws2812_xmit:
 	mov    r24, r22      ; copy pin_mask into r24
 	com    r24           ; invert pin_mask in r24
 	and    r24, r25      ; and *port_reg with ~pin_mask (port_0)
-	or     r22, r25      ; or *port_reg with pin_mask (port_1)
+	or     r25, r22      ; or *port_reg with pin_mask (port_1)
 
 	; bring data line low
 	st     X,   r24      ; store port_0 to port_reg
@@ -50,25 +50,25 @@ ws2812_xmit:
         adc    r29, r1       ; add zero to Y (msb)
 
 BYTE_LOOP: ; loop through data bytes
-	ld     r25, Z        ; load r25 with data byte
+	ld     r22, Z        ; load r22 with data byte
         ldi    r16, 0x80     ; load initial bitmask
 
 BIT_LOOP: ; loop through byte bits
 	cli                  ; turn off interrups
 
-	mov    r17, r25      ; copy data byte into r17
+	mov    r17, r22      ; copy data byte into r17
         and    r17, r16      ; and data byte with bitmask
         brne   BIT_ONE       ; handle one-bit
 
 BIT_ZERO: ; send 0-bit
-        st     X,   r22      ; bring data line high
+        st     X,   r25      ; bring data line high
 	DELAY_NSEC T0H_NS    ; zero-bit high delay
 	st     X,   r24      ; bring data line low
 	DELAY_NSEC T0L_NS    ; zero-bit low delay
 	rjmp   BIT_CONTINUE  ; continue
 
 BIT_ONE: ; send 1-bit
-        st     X,   r22      ; bring data line high
+        st     X,   r25      ; bring data line high
 	DELAY_NSEC T1H_NS    ; one-bit high delay
 	st     X,   r24      ; bring data line low
 	DELAY_NSEC T1L_NS    ; one-bit low delay

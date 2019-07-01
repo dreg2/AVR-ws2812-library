@@ -19,6 +19,9 @@ void ws2812_init(ws2812_string_t *string, uint8_t pin, uint8_t count)
 	// clear all led data
 	for (uint8_t i = 0; i < string->count; i++)
 		string->led[i][LED_COLOR_G] = string->led[i][LED_COLOR_R] = string->led[i][LED_COLOR_B] = 0;
+
+	// mark structure valid
+	string->valid_flag = VALID;
 	}
 
 //----------------------------------------------------------------------------------------------------
@@ -26,6 +29,10 @@ void ws2812_init(ws2812_string_t *string, uint8_t pin, uint8_t count)
 //----------------------------------------------------------------------------------------------------
 void ws2812_send(ws2812_string_t *string)
 	{
+	// check for initialized structure
+	if (string->valid_flag != VALID)
+		return; 
+
 	// call assembly xmit function with structure fields
 	ws2812_xmit(string->pin.port_reg, string->pin.pin_mask, &string->led[0][0], (uint8_t)(string->count * LED_COLORS));
 	_delay_us(RST_US); // latch delay
