@@ -7,13 +7,13 @@
 
 ; delay times for data line states in nanoseconds
 #define T0H_NS  350
-#define T1H_NS  650
+#define T1H_NS  750
 #define T0L_NS  800
-#define T1L_NS  500
+#define T1L_NS  300
 
 ; macro to delay for count nanoseconds
 .macro	DELAY_NSEC nsec=0
-        .rept  ((\nsec) /  (1000000000 / F_CPU))
+        .rept  (((\nsec) /  (1000000000 / F_CPU)) - 1)
         nop
         .endr
 .endm
@@ -26,6 +26,8 @@ ws2812_xmit:
 	; prologue
 	push   r16
 	push   r17
+	push   r26
+	push   r27
 	push   r28
 	push   r29
 	clr    r1            ; clear zero-register
@@ -54,7 +56,7 @@ BYTE_LOOP: ; loop through data bytes
         ldi    r16, 0x80     ; load initial bitmask
 
 BIT_LOOP: ; loop through byte bits
-	cli                  ; turn off interrups
+	cli                  ; turn off interrupts
 
 	mov    r17, r22      ; copy data byte into r17
         and    r17, r16      ; and data byte with bitmask
@@ -85,9 +87,11 @@ BIT_CONTINUE:
 
 	; epilogue
 	pop    r29
-        pop    r28
-        pop    r17
-        pop    r16
-        ret
-        .size   ws2812_xmit, .-ws2812_xmit
+	pop    r28
+	pop    r27
+	pop    r26
+	pop    r17
+	pop    r16
+	ret
+	.size   ws2812_xmit, .-ws2812_xmit
 

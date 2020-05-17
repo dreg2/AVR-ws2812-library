@@ -8,6 +8,11 @@
 
 #define WS2812_PIN   12
 #define WS2812_COUNT 12
+//#define WS2812_COUNT 1
+
+#ifndef BAUD
+	#define BAUD 115200
+#endif
 
 //----------------------------------------------------------------------------------------------------
 // main
@@ -16,7 +21,8 @@ int main(void)
 	{
 	ws2812_string_t string;
 
-	uart_init_115200(); // initialize uart
+//	uart_init_115200(); // initialize uart
+	uart_init_baud(); // initialize uart
 printf("uart initialized\n");
 
 	ws2812_init(&string, WS2812_PIN, WS2812_COUNT);

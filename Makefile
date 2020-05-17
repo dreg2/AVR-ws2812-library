@@ -1,127 +1,115 @@
-# Sources
+# project
 TARGET     = ws2812
+SOURCES    = $(TARGET).c $(TARGET)_xmit.S
 INCLUDES   = $(TARGET).h
-C_SOURCES  = $(TARGET).c
-A_SOURCES  = $(TARGET)_xmit.S
-LIBS       = -luart -lpin
-DEFINES    =
-
-# target specifics
-DEVICE     = atmega328p
-CLOCK      = 16000000
-AVRD_PGMR  = arduino
-AVRD_PORT  = /dev/ttyACM0
-AVRD_PORT2 = /dev/ttyUSB0
-#AVRD_BAUD  = 115200
-AVRD_BAUD  = 57600
-AVRD_FLAGS = -v
-#FUSES      = -U lfuse:w:0xFF:m -U hfuse:w:0xDE:m -U efuse:w:0x05:m
-UART_BAUD  = 115200
-#UART_BAUD  = 57600
+I_DIRS     = -I../include
+DEFINES    = -D PIN_SFR_ASM_COMPAT
+VPATH      =  ../src
+L_SOURCES  = uart.c pin.c
+L_LIBS     = 
+L_DIRS     =
 
 # stdio printf options: float, minimal, normal
-#LIB_PRINTF = -Wl,-u,vfprintf -lprintf_flt -lm
-#LIB_PRINTF = -Wl,-u,vfprintf -lprintf_min
-LIB_PRINTF =
+#L_PRINTF   = -Wl,-u,vfprintf -lprintf_flt -lm
+#L_PRINTF   = -Wl,-u,vfprintf -lprintf_min
+L_PRINTF   =
+
+
+# target specifics
+AVR_DEVICE = atmega328p
+AVR_CLOCK  = 16000000
+AVR_PGMR   = arduino
+AVR_PORT   = /dev/ttyUSB0
+AVR_BAUD   = 115200
+#AVR_FUSES  = -U lfuse:w:0xFF:m -U hfuse:w:0xDE:m -U efuse:w:0x05:m
+UART_PORT  = /dev/ttyUSB0
+UART_BAUD  = 115200
+
 
 # files
 ELF        = $(TARGET).elf
 HEX        = $(TARGET).hex
-LIB        = lib${TARGET}.a
-C_OBJS     = $(C_SOURCES:.c=.o)
-A_OBJS     = $(A_SOURCES:.S=.o)
-OBJS       = $(C_OBJS) $(A_OBJS)
-ASMS       = $(C_SOURCES:.c=.s)
-
-# library test files
-TEST_TGT   = $(TARGET)_test
-TEST_SRC   = $(TEST_TGT).c
-TEST_OBJ   = $(TEST_TGT).o
+LIB        = lib$(TARGET).a
+OBJS       = $(SOURCES:.c=.o)
+OBJS      := $(OBJS:.S=.o)
+L_OBJS     = $(L_SOURCES:.c=.o)
+L_OBJS    := $(L_OBJS:.S=.o)
+TEST_OBJ   = $(TARGET)_test.o
 
 # compiler options
-STANDARD   = -std=gnu11
-#TEMPS      = -save-temps
-#DEBUG      = -D DEBUG
-#OPTIMIZE   = -O2
-INC_DIRS   = -I../../include
-LIB_DIRS   = -L../../lib
-C_FLAGS    = $(STANDARD) $(INC_DIRS) $(DEBUG) $(OPTIMIZE) $(TEMPS) $(DEFINES)\
-		-Os -D F_CPU=$(CLOCK) -mmcu=$(DEVICE) \
-		-W -Wall -pedantic \
+DEFINES   += -D F_CPU=$(AVR_CLOCK) -D BAUD=$(UART_BAUD)
+C_FLAGS    = -mmcu=$(AVR_DEVICE) $(DEFINES) $(I_DIRS) \
+		-std=gnu11 -Os -W -Wall -pedantic \
 		-Wformat-nonliteral -Wcast-align  \
 		-Wpointer-arith -Wbad-function-cast \
 		-Wstrict-prototypes -Winline -Wundef \
 		-Wnested-externs -Wcast-qual -Wshadow \
 		-Wconversion -Wwrite-strings \
 		-ffloat-store
-L_FLAGS    = $(LIB_DIRS) $(LIB_PRINTF) $(LIBS)
-#A_FLAGS    = -Wa,-a
+A_FLAGS    = -mmcu=$(AVR_DEVICE) $(DEFINES)
+L_FLAGS    = -mmcu=$(AVR_DEVICE)
 
-# compiler commands
+
+# command lines
 COMPILE    = avr-gcc $(C_FLAGS)
-ASSEMBLE   = avr-gcc $(C_FLAGS) $(A_FLAGS)
-AVRDUDE    = avrdude $(AVRD_FLAGS) -c $(AVRD_PGMR) -P $(AVRD_PORT)  -b $(AVRD_BAUD) -p $(DEVICE)
-AVRDUDE2   = avrdude $(AVRD_FLAGS) -c $(AVRD_PGMR) -P $(AVRD_PORT2) -b $(AVRD_BAUD) -p $(DEVICE)
-AVROBJCOPY = avr-objcopy -j .text -j .data -O ihex $(ELF) $(HEX)
+ASSEMBLE   = avr-gcc $(A_FLAGS)
+LINK       = avr-gcc $(L_FLAGS)
+OBJCOPY    = avr-objcopy -j .text -j .data -O ihex
+OBJDUMP    = avr-objdump -d
+SIZE       = avr-size --mcu=$(AVR_DEVICE) -C
+READELF    = avr-readelf -a
+AR         = avr-ar rcs
+AVRDUDE    = avrdude -v -c $(AVR_PGMR) -P $(AVR_PORT) -b $(AVR_BAUD) -p $(AVR_DEVICE)
 
 
 # symbolic targets
-all:	$(LIB)
+.PHONY: all lib debug size info flash fuse install clean disasm monitor
 
-lib:	$(LIB)
+all: $(HEX)
 
-test: $(OBJS)
-	$(COMPILE) -D TEST -c $(TEST_SRC) -o $(TEST_OBJ)
-	$(COMPILE) -o $(ELF) $(OBJS) $(TEST_OBJ) $(L_FLAGS)
-	$(AVROBJCOPY)
+lib: $(LIB)
 
-asm: $(ASMS)
+debug: DEFINES += -D DEBUG
+debug: $(HEX)
 
+# command targets
+size: $(ELF)
+	$(SIZE) $(ELF)
+
+info: $(ELF)
+	$(READELF) $(ELF)
+
+flash: $(HEX)
+	$(AVRDUDE) -U flash:w:$(HEX):i
+
+#fuse:
+#	$(AVRDUDE) $(AVR_FUSES)
+
+install:
+	cp $(SOURCES) ../src
+	cp $(INCLUDES) ../include
+
+clean:
+	rm -f $(LIB) $(HEX) $(ELF) $(OBJS) $(L_OBJS) $(TEST_OBJ)
+
+disasm: $(ELF)
+	$(OBJDUMP) $(ELF)
+
+monitor:
+	minicom -D $(UART_PORT) -b $(UART_BAUD)
+
+# file targets
 %.o: %.c $(INCLUDES)
-	$(COMPILE)  -c $< -o $@
+	$(COMPILE) -c $< -o $@
 
 %.o: %.S
 	$(ASSEMBLE) -c $< -o $@
 
-%.s: %.c
-	$(COMPILE) -S $< -o $@
-
-# command targets
-flash:	$(HEX)
-	$(AVRDUDE) -U flash:w:$(HEX):i
-
-flash2:	$(HEX)
-	$(AVRDUDE2) -U flash:w:$(HEX):i
-
-#fuse:
-#	$(AVRDUDE) $(FUSES)
-
-install: $(LIB)
-	cp $(TARGET).h ../../include
-	cp $(LIB)      ../../lib
-
-clean:
-	rm -f $(LIB) $(HEX) $(ELF) $(OBJS) $(TEST_OBJ)
-
-disasm:	$(ELF)
-	avr-objdump -d $(ELF)
-
-monitor:
-	 minicom -D $(AVRD_PORT) -b $(UART_BAUD)
-
-monitor2:
-	 minicom -D $(AVRD_PORT2) -b $(UART_BAUD)
-
-
-# file targets
-$(ELF): $(OBJS)
-	$(COMPILE) -o $(ELF) $(OBJS) $(L_FLAGS)
+$(ELF): $(OBJS) $(L_OBJS) $(TEST_OBJ)
+	$(LINK) $(TEST_OBJ) $(OBJS) $(L_OBJS) $(L_DIRS) $(L_LIBS) $(L_PRINTF) -o $(ELF)
 
 $(HEX): $(ELF)
-	$(AVROBJCOPY)
+	$(OBJCOPY) $(ELF) $(HEX)
 
 $(LIB): $(OBJS)
-	avr-ar rcs $(LIB) $(OBJS)
-
-.PHONY: flash flash2 fuse install lib clean disasm asm monitor monitor2 test
-
+	$(AR) $(LIB) $(OBJS)
